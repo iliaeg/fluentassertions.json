@@ -7,6 +7,7 @@ namespace FluentAssertions.Json
 {
     internal static class JTokenDifferentiator
     {
+        public static bool treatArrayAsSet = false;
         public static Difference FindFirstDifference(JToken actual, JToken expected)
         {
             var path = new JPath();
@@ -58,26 +59,55 @@ namespace FluentAssertions.Json
 
         private static Difference CompareItems(JArray actual, JArray expected, JPath path)
         {
-            JEnumerable<JToken> actualChildren = actual.Children();
-            JEnumerable<JToken> expectedChildren = expected.Children();
-
-            if (actualChildren.Count() != expectedChildren.Count())
+            if (treatArrayAsSet)
             {
-                return new Difference(DifferenceKind.DifferentLength, path);
-            }
-
-            for (int i = 0; i < actualChildren.Count(); i++)
-            {
-                Difference firstDifference = FindFirstDifference(actualChildren.ElementAt(i), expectedChildren.ElementAt(i), 
-                    path.AddIndex(i));
-
-                if (firstDifference != null)
+                JEnumerable<JToken> actualChildren = actual.Children();
+                JEnumerable<JToken> expectedChildren = expected.Children();
+                for (int t = 0; t < 2; t++) 
                 {
-                    return firstDifference;
+                    for (int i = 0; i < actualChildren.Count(); i++)
+                    {
+                        bool exist = false;
+                        for (int j = 0; j < expectedChildren.Count(); j++)
+                        {
+                            Difference firstDifference = FindFirstDifference(actualChildren.ElementAt(i), expectedChildren.ElementAt(j), 
+                            path.AddIndex(i));
+                            if (firstDifference == null)
+                            {
+                                exist = true;
+                                break;
+                            }
+                        }
+                        if (!exist)
+                            return new Difference(DifferenceKind.OtherSet, path);
+                    }
+                    // swap and compare sets in another direction
+                    actualChildren = expected.Children();
+                    expectedChildren = actual.Children();
                 }
-            }
 
-            return null;
+                return null;
+            } else {
+                JEnumerable<JToken> actualChildren = actual.Children();
+                JEnumerable<JToken> expectedChildren = expected.Children();
+
+                if (actualChildren.Count() != expectedChildren.Count())
+                {
+                    return new Difference(DifferenceKind.DifferentLength, path);
+                }
+                
+                for (int i = 0; i < actualChildren.Count(); i++)
+                {
+                    Difference firstDifference = FindFirstDifference(actualChildren.ElementAt(i), expectedChildren.ElementAt(i), 
+                        path.AddIndex(i));
+
+                    if (firstDifference != null)
+                    {
+                        return firstDifference;
+                    }
+                }
+                return null;
+            }
         }
 
         private static Difference FindJObjectDifference(JObject actual, JToken expected, JPath path)
@@ -200,6 +230,8 @@ namespace FluentAssertions.Json
                     return $"misses property {Path}";
                 case DifferenceKind.ExpectedMissesProperty:
                     return $"has extra property {Path}";
+                case DifferenceKind.OtherSet:
+                    return $"has a mismatch in set at {Path}";
                 default:
                     throw new ArgumentOutOfRangeException();
             }
@@ -246,6 +278,7 @@ namespace FluentAssertions.Json
         OtherValue,
         DifferentLength,
         ActualMissesProperty,
-        ExpectedMissesProperty
+        ExpectedMissesProperty,
+        OtherSet
     }
 }

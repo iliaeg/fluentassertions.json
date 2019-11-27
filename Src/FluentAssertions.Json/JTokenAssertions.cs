@@ -104,6 +104,43 @@ namespace FluentAssertions.Json
         }
 
         /// <summary>
+        ///     Asserts that the current <see cref="JToken" /> is equivalent to the <paramref name="expected" /> element,
+        ///     using an equivalent of <see cref="JToken.DeepEquals(JToken, JToken)" />.
+        /// </summary>
+        /// <param name="expected">The expected element</param>
+        /// <param name="because">
+        ///     A formatted phrase as is supported by <see cref="string.Format(string,object[])" /> explaining why the assertion
+        ///     is needed. If the phrase does not start with the word <i>because</i>, it is prepended automatically.
+        /// </param>
+        /// <param name="becauseArgs">
+        ///     Zero or more objects to format using the placeholders in <see paramref="because" />.
+        /// </param>
+        public AndConstraint<JTokenAssertions> BeEquivalentTo(JToken expected, bool treatArrayAsSet, string because = "",
+            params object[] becauseArgs)
+        {
+            if (treatArrayAsSet)
+                JTokenDifferentiator.treatArrayAsSet = treatArrayAsSet;
+            Difference difference = JTokenDifferentiator.FindFirstDifference(Subject, expected);
+
+            var message = $"JSON document {difference}.{Environment.NewLine}" +
+                          $"Expected{Environment.NewLine}" +
+                          $"{Format(Subject, true).Replace("{", "{{").Replace("}", "}}")}{Environment.NewLine}" +
+                          $"to be equivalent to{Environment.NewLine}" +
+                          $"{Format(expected, true).Replace("{", "{{").Replace("}", "}}")}{Environment.NewLine}" +
+                          "{reason}.";
+            
+            Execute.Assertion
+                .ForCondition(difference == null)
+                .BecauseOf(because, becauseArgs)
+                .FailWith(message);
+
+            if (treatArrayAsSet)
+                JTokenDifferentiator.treatArrayAsSet = false;
+
+            return new AndConstraint<JTokenAssertions>(this);
+        }
+
+        /// <summary>
         ///     Asserts that the current <see cref="JToken" /> is not equivalent to the parsed <paramref name="unexpected" /> JSON,
         ///     using an equivalent of <see cref="JToken.DeepEquals(JToken, JToken)" />.
         /// </summary>
