@@ -1083,6 +1083,115 @@ namespace FluentAssertions.Json
                 .WithInnerException<JsonReaderException>();
         }
 
+        [Fact]
+        public void When_both_sets_are_the_same_or_equal_BeEquivalentTo_treatArrayAsSet_should_succeed()
+        {
+            //-----------------------------------------------------------------------------------------------------------
+            // Arrange
+            //-----------------------------------------------------------------------------------------------------------
+            var testCases = new []
+            {
+                Tuple.Create(
+                    "{ items: [ \"fork\", \"knife\" ]}",
+                    "{ items: [ \"fork\", \"knife\" ]}")
+                ,
+                Tuple.Create(
+                    "{ items: [ \"fork\", \"fork\", \"fork\" ]}",
+                    "{ items: [ \"fork\" ]}")
+                ,
+                Tuple.Create(
+                    "{ items: [ \"fork\" ]}",
+                    "{ items: [ \"fork\", \"fork\", \"fork\" ]}")
+                ,
+                Tuple.Create(
+                    "{ items: [ \"fork\", \"knife\" , \"spoon\" ]}",
+                    "{ items: [ \"spoon\", \"fork\", \"knife\" ]}")
+                ,
+                Tuple.Create(
+                    "{ items: [ \"knife\", \"fork\" ]}",
+                    "{ items: [ \"fork\", \"knife\" , \"fork\" ]}")
+                ,
+                Tuple.Create(
+                    "{ items: [ \"fork\", \"spoon\" , \"spoon\" ]}",
+                    "{ items: [ \"fork\", \"spoon\" ]}")
+            };
+
+            foreach (var testCase in testCases)
+            {
+                string actualJson = testCase.Item1;
+                string expectedJson = testCase.Item2;
+
+                var actual = (actualJson != null) ? JToken.Parse(actualJson) : null;
+                var expected = (expectedJson != null) ? JToken.Parse(expectedJson) : null;
+
+                //-----------------------------------------------------------------------------------------------------------
+                // Act & Assert
+                //-----------------------------------------------------------------------------------------------------------
+                actual.Should().BeEquivalentTo(actual, true);
+                expected.Should().BeEquivalentTo(expected, true);
+                actual.Should().BeEquivalentTo(expected, true);
+            }
+        }
+
+        [Fact]
+        public void When_sets_differ_BeEquivalentTo_treatArrayAsSet_should_fail()
+        {
+            //-----------------------------------------------------------------------------------------------------------
+            // Arrange
+            //-----------------------------------------------------------------------------------------------------------
+            var testCases = new []
+            {
+                Tuple.Create(
+                    "{ items: [ \"fork\" ]}",
+                    "{ items: [ \"fork\", \"knife\" ]}",
+                    "has a mismatch in set at $.items")
+                ,
+                Tuple.Create(
+                    "{ items: [ \"fork\", \"knife\" ]}",
+                    "{ items: [ \"fork\" ]}",
+                    "has a mismatch in set at $.items")
+                ,
+                Tuple.Create(
+                    "{ items: [ \"fork\", \"fork\" , \"fork\" ]}",
+                    "{ items: [ \"fork\", \"knife\" ]}",
+                    "has a mismatch in set at $.items")
+                ,
+                Tuple.Create(
+                    "{ items: [ \"knife\", \"fork\" ]}",
+                    "{ items: [ \"knife\", \"knife\", \"knife\" ]}",
+                    "has a mismatch in set at $.items")
+                ,
+                Tuple.Create(
+                    "{ items: [ \"fork\", \"spoon\" ]}",
+                    "{ items: [ \"knife\", \"spoon\" ]}",
+                    "has a mismatch in set at $.items")
+            };
+
+            foreach (var testCase in testCases)
+            {
+                string actualJson = testCase.Item1;
+                string expectedJson = testCase.Item2;
+                string expectedDifference = testCase.Item3;
+
+                var actual = (actualJson != null) ? JToken.Parse(actualJson) : null;
+                var expected = (expectedJson != null) ? JToken.Parse(expectedJson) : null;
+
+                var expectedMessage =
+                    $"JSON document {expectedDifference}." +
+                    $"Expected" +
+                    $"{Format(actual, true)}" +
+                    $"to be equivalent to" +
+                    $"{Format(expected, true)}.";
+
+                //-----------------------------------------------------------------------------------------------------------
+                // Act & Assert
+                //-----------------------------------------------------------------------------------------------------------
+                actual.Should().Invoking(x => x.BeEquivalentTo(expected, true))
+                    .Should().Throw<XunitException>()
+                    .WithMessage(expectedMessage);
+            }
+        }
+
         #endregion
 
         private static string Format(JToken value, bool useLineBreaks = false)
